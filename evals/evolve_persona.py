@@ -218,12 +218,12 @@ def score_all_tiers(
                 pass
 
     return {
-        "t1_mean": round(mean_(t1_means), 3) if t1_means else 0.0,
-        "t2_mean": round(mean_(t2_scores), 3) if t2_scores else 0.0,
-        "t3_mean": round(mean_(t3_scores), 3) if t3_scores else 0.0,
-        "t6_mean": round(mean_(t6_scores), 3) if t6_scores else 0.0,
-        "t7_mean": round(mean_(t7_scores), 3) if t7_scores else 0.0,
-        "t8_mean": round(mean_(t8_scores), 3) if t8_scores else 0.0,
+        "t1_mean": round(mean_(t1_means), 3) if t1_means else None,
+        "t2_mean": round(mean_(t2_scores), 3) if t2_scores else None,
+        "t3_mean": round(mean_(t3_scores), 3) if t3_scores else None,
+        "t6_mean": round(mean_(t6_scores), 3) if t6_scores else None,
+        "t7_mean": round(mean_(t7_scores), 3) if t7_scores else None,
+        "t8_mean": round(mean_(t8_scores), 3) if t8_scores else None,
         "failures_t1": failures_t1,
         "failures_t2": failures_t2,
         "failures_t3": failures_t3,
@@ -236,10 +236,18 @@ def score_all_tiers(
 
 def composite(scores: dict, weights: tuple[float, ...]) -> float:
     """Composite fitness. weights is a 3- or 6-tuple:
-    (T1, T2, T3) or (T1, T2, T3, T6, T7, T8)."""
+    (T1, T2, T3) or (T1, T2, T3, T6, T7, T8).
+    Skips tiers with None scores (unscored) and renormalizes weights."""
     w = list(weights) + [0.0] * 6
     keys = ("t1_mean", "t2_mean", "t3_mean", "t6_mean", "t7_mean", "t8_mean")
-    return round(sum(w[i] * scores.get(keys[i], 0.0) for i in range(6)), 3)
+    scored = [(i, scores.get(keys[i])) for i in range(6)]
+    scored = [(i, v) for i, v in scored if v is not None]
+    if not scored:
+        return 0.0
+    total_w = sum(w[i] for i, _ in scored)
+    if total_w == 0:
+        return 0.0
+    return round(sum(w[i] * v for i, v in scored) / total_w, 3)
 
 
 def diagnose(scores: dict) -> list[str]:
